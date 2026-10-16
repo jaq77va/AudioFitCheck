@@ -11,7 +11,7 @@ st.set_page_config(
     layout="centered"
 )
 
-# --- CSS PERSONALIZZATO PER UX MOBILE AVANZATA ---
+# --- CSS PERSONALIZZATO PER UX MOBILE AVANZATA (PULSANTI GIGANTI) ---
 st.markdown("""
     <style>
     /* 1. Forza la Sidebar a rimanere visibile e fissa anche su schermi stretti (mobile) */
@@ -22,14 +22,13 @@ st.markdown("""
             transform: none !important;
             visibility: visible !important;
         }
-        /* Spinge il contenuto principale per fare spazio alla sidebar fissa */
         .main .block-container {
             padding-left: 1rem !important;
             padding-right: 1rem !important;
         }
     }
 
-    /* 2. Ingrandimento drastico dei pulsanti (Rec, Invio, Elimina) per facilitare il tap da mobile */
+    /* 2. Ingrandimento drastico di TUTTI i pulsanti standard (Invio, Elimina, ecc.) */
     .stButton > button {
         width: 100% !important;
         height: 4rem !important;
@@ -41,10 +40,18 @@ st.markdown("""
         box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
     }
 
-    /* Evidenziazione speciale per il tasto di elaborazione principale */
-    button[kind="primary"] {
-        background-color: #ff4b4b !important;
-        color: white !important;
+    /* 3. Ingrandimento specifico del widget di registrazione audio (st.audio_input) */
+    [data-testid="stAudioInput"] {
+        width: 100% !important;
+    }
+    
+    [data-testid="stAudioInput"] button {
+        width: 100% !important;
+        height: 4rem !important;
+        font-size: 1.25rem !important;
+        border-radius: 16px !important;
+        background-color: #f0f2f6;
+        border: 2px dashed #ff4b4b !important;
     }
 
     /* Spaziatura generale ottimizzata per pollici */
@@ -88,10 +95,10 @@ st.markdown("---")
 
 # --- SEZIONE 1: RACCOLTA TRACCE (PULSANTI EXTRA-LARGE) ---
 st.subheader("1. Registrazione Tracce Audio")
-st.caption("Usa il registratore qui sotto per catturare il vocale del cliente.")
+st.caption("Tocca il pulsante per registrare il vocale del cliente.")
 
-# Widget di registrazione audio nativo
-uploaded_audio = st.audio_input("Tocca per registrare")
+# Widget di registrazione audio nativo (ora forzato a pieno schermo con stile coordinato)
+uploaded_audio = st.audio_input("Registra vocale")
 
 if uploaded_audio is not None:
     audio_bytes = uploaded_audio.getvalue()
@@ -114,7 +121,6 @@ if st.session_state.audio_tracks:
         st.write(f"**{track['name']}**")
         st.audio(track["bytes"], format="audio/wav")
         
-        # Pulsante Elimina ingrandito per smartphone
         if st.button(f"🗑️ Elimina Vocale #{i+1}", key=f"del_{i}", type="secondary"):
             st.session_state.audio_tracks.pop(i)
             st.rerun()
@@ -127,7 +133,7 @@ process_enabled = len(st.session_state.audio_tracks) > 0 and len(selected_cluste
 
 st.subheader("2. Generazione Analisi")
 
-# Pulsante principale grande (full-width grazie al CSS)
+# Pulsante principale grande (stessa dimensione visiva del rec)
 if st.button("🚀 ELABORA CHECK-IN COMPLETO", type="primary", disabled=not process_enabled):
     with st.spinner("L'IA sta elaborando le tracce audio..."):
         
