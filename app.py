@@ -11,10 +11,10 @@ st.set_page_config(
     layout="centered"
 )
 
-# --- CSS PERSONALIZZATO PER UX MOBILE AVANZATA (PULSANTI GIGANTI) ---
+# --- CSS PERSONALIZZATO PER UNIFORMARE I PULSANTI A STILE "CARD" ---
 st.markdown("""
     <style>
-    /* 1. Forza la Sidebar a rimanere visibile e fissa anche su schermi stretti (mobile) */
+    /* 1. Sidebar fissa anche su mobile */
     @media (max-width: 768px) {
         [data-testid="stSidebar"] {
             min-width: 260px !important;
@@ -28,33 +28,45 @@ st.markdown("""
         }
     }
 
-    /* 2. Ingrandimento drastico di TUTTI i pulsanti standard (Invio, Elimina, ecc.) */
+    /* 2. Stile unificato per TUTTI i pulsanti principali (Elabora, Elimina, ecc.) */
     .stButton > button {
         width: 100% !important;
         height: 4rem !important;
-        font-size: 1.25rem !important;
-        font-weight: 700 !important;
+        font-size: 1.15rem !important;
+        font-weight: 600 !important;
         border-radius: 16px !important;
-        margin-top: 0.75rem !important;
-        margin-bottom: 0.75rem !important;
-        box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+        border: 1px solid #e0e0e0 !important;
+        background-color: #ffffff !important;
+        color: #31333F !important;
+        box-shadow: 0 2px 5px rgba(0, 0, 0, 0.05);
+        margin-top: 0.5rem !important;
+        margin-bottom: 0.5rem !important;
     }
 
-    /* 3. Ingrandimento specifico del widget di registrazione audio (st.audio_input) */
+    /* Evidenziazione speciale per il tasto di elaborazione principale */
+    button[kind="primary"] {
+        background-color: #ffffff !important;
+        color: #ff4b4b !important;
+        border: 2px solid #ff4b4b !important;
+    }
+
+    /* 3. Personalizzazione del widget di registrazione audio per farlo sembrare un unico blocco pulito */
     [data-testid="stAudioInput"] {
         width: 100% !important;
+        background-color: #f8f9fa;
+        border: 1px solid #e0e0e0;
+        border-radius: 16px;
+        padding: 10px;
+        box-shadow: 0 2px 5px rgba(0, 0, 0, 0.05);
     }
     
+    /* Rende il pulsante di registrazione interno coerente e grande */
     [data-testid="stAudioInput"] button {
-        width: 100% !important;
-        height: 4rem !important;
-        font-size: 1.25rem !important;
-        border-radius: 16px !important;
-        background-color: #f0f2f6;
-        border: 2px dashed #ff4b4b !important;
+        border-radius: 12px !important;
+        border: 1px solid #d0d5dd !important;
+        background-color: #ffffff !important;
     }
 
-    /* Spaziatura generale ottimizzata per pollici */
     .block-container {
         padding-top: 1.5rem;
         padding-bottom: 4rem;
@@ -93,11 +105,11 @@ with st.sidebar:
 
 st.markdown("---")
 
-# --- SEZIONE 1: RACCOLTA TRACCE (PULSANTI EXTRA-LARGE) ---
+# --- SEZIONE 1: RACCOLTA TRACCE ---
 st.subheader("1. Registrazione Tracce Audio")
-st.caption("Tocca il pulsante per registrare il vocale del cliente.")
+st.caption("Usa il box sottostante per registrare il vocale.")
 
-# Widget di registrazione audio nativo (ora forzato a pieno schermo con stile coordinato)
+# Widget di registrazione audio nativo racchiuso nel nuovo stile
 uploaded_audio = st.audio_input("Registra vocale")
 
 if uploaded_audio is not None:
@@ -114,7 +126,7 @@ if uploaded_audio is not None:
         st.success(f"Registrato: {track_name}")
         st.rerun()
 
-# Visualizzazione della coda tracce con pulsanti di eliminazione grandi
+# Visualizzazione della coda tracce con pulsanti coordinati
 if st.session_state.audio_tracks:
     st.markdown("### 📋 Tracce in Coda")
     for i, track in enumerate(st.session_state.audio_tracks):
@@ -133,7 +145,7 @@ process_enabled = len(st.session_state.audio_tracks) > 0 and len(selected_cluste
 
 st.subheader("2. Generazione Analisi")
 
-# Pulsante principale grande (stessa dimensione visiva del rec)
+# Pulsante principale di elaborazione con lo stesso stile pulito e bordato
 if st.button("🚀 ELABORA CHECK-IN COMPLETO", type="primary", disabled=not process_enabled):
     with st.spinner("L'IA sta elaborando le tracce audio..."):
         
