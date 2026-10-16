@@ -11,10 +11,10 @@ st.set_page_config(
     layout="centered"
 )
 
-# --- CSS PERSONALIZZATO PER UNIFORMARE I PULSANTI A STILE "CARD" ---
+# --- CSS PERSONALIZZATO PER LA NUOVA UX MOBILE ---
 st.markdown("""
     <style>
-    /* 1. Sidebar fissa anche su mobile */
+    /* 1. Sidebar fissa sempre visibile */
     @media (max-width: 768px) {
         [data-testid="stSidebar"] {
             min-width: 260px !important;
@@ -28,7 +28,7 @@ st.markdown("""
         }
     }
 
-    /* 2. Stile unificato per TUTTI i pulsanti principali (Elabora, Elimina, ecc.) */
+    /* 2. Stile unificato e gigante per i pulsanti principali */
     .stButton > button {
         width: 100% !important;
         height: 4rem !important;
@@ -43,14 +43,14 @@ st.markdown("""
         margin-bottom: 0.5rem !important;
     }
 
-    /* Evidenziazione speciale per il tasto di elaborazione principale */
+    /* Evidenziazione per il tasto di invio finale */
     button[kind="primary"] {
         background-color: #ffffff !important;
         color: #ff4b4b !important;
         border: 2px solid #ff4b4b !important;
     }
 
-    /* 3. Personalizzazione del widget di registrazione audio per farlo sembrare un unico blocco pulito */
+    /* 3. Blocco widget audio pulito */
     [data-testid="stAudioInput"] {
         width: 100% !important;
         background-color: #f8f9fa;
@@ -60,7 +60,6 @@ st.markdown("""
         box-shadow: 0 2px 5px rgba(0, 0, 0, 0.05);
     }
     
-    /* Rende il pulsante di registrazione interno coerente e grande */
     [data-testid="stAudioInput"] button {
         border-radius: 12px !important;
         border: 1px solid #d0d5dd !important;
@@ -74,17 +73,16 @@ st.markdown("""
     </style>
 """, unsafe_allow_html=True)
 
-# Inizializzazione della coda tracce audio nella sessione
+# Inizializzazione della coda tracce audio
 if "audio_tracks" not in st.session_state:
     st.session_state.audio_tracks = []
 
 st.title("🎙️ Check-In Vocale Coach")
-st.markdown("Gestisci i check-in dei tuoi clienti in pochi secondi da mobile.")
 
-# --- SIDEBAR FISSA PER CLUSTER E KPI ---
+# --- SEZIONE: CONFIGURAZIONE REPORT (SIDEBAR FISSA) ---
 with st.sidebar:
     st.header("⚙️ Configurazione Report")
-    st.markdown("Seleziona i cluster da includere nell'analisi:")
+    st.markdown("Seleziona i cluster da includere:")
     
     cluster_options = {
         "peso": "⚖️ Variazioni di Peso e Misure",
@@ -105,12 +103,11 @@ with st.sidebar:
 
 st.markdown("---")
 
-# --- SEZIONE 1: RACCOLTA TRACCE ---
+# --- SEZIONE 1: REGISTRAZIONE TRACCE AUDIO ---
 st.subheader("1. Registrazione Tracce Audio")
-st.caption("Usa il box sottostante per registrare il vocale.")
+st.caption("Tocca per registrare un nuovo vocale dal microfono.")
 
-# Widget di registrazione audio nativo racchiuso nel nuovo stile
-uploaded_audio = st.audio_input("Registra vocale")
+uploaded_audio = st.audio_input("Tasto per Start/Stop Registrazione Vocale")
 
 if uploaded_audio is not None:
     audio_bytes = uploaded_audio.getvalue()
@@ -126,27 +123,31 @@ if uploaded_audio is not None:
         st.success(f"Registrato: {track_name}")
         st.rerun()
 
-# Visualizzazione della coda tracce con pulsanti coordinati
+st.markdown("---")
+
+# --- SEZIONE: TRACCIA IN REGISTRAZIONE / ELENCO TRACCE IN CODA ---
+st.subheader("📋 Elenco Registrazioni e Rimozione Tracce")
+
 if st.session_state.audio_tracks:
-    st.markdown("### 📋 Tracce in Coda")
     for i, track in enumerate(st.session_state.audio_tracks):
         st.write(f"**{track['name']}**")
         st.audio(track["bytes"], format="audio/wav")
         
-        if st.button(f"🗑️ Elimina Vocale #{i+1}", key=f"del_{i}", type="secondary"):
+        if st.button(f"🗑️ Rimuovi Traccia #{i+1}", key=f"del_{i}", type="secondary"):
             st.session_state.audio_tracks.pop(i)
             st.rerun()
         st.markdown("---")
 else:
-    st.info("Nessuna traccia registrata. Registra almeno un vocale per abilitare l'invio.")
+    st.info("Nessuna traccia registrata al momento.")
 
-# --- SEZIONE 2: ELABORAZIONE FINALE ---
-process_enabled = len(st.session_state.audio_tracks) > 0 and len(selected_clusters) > 0
+st.markdown("---")
 
+# --- SEZIONE 2: GENERAZIONE ANALISI ---
 st.subheader("2. Generazione Analisi")
 
-# Pulsante principale di elaborazione con lo stesso stile pulito e bordato
-if st.button("🚀 ELABORA CHECK-IN COMPLETO", type="primary", disabled=not process_enabled):
+process_enabled = len(st.session_state.audio_tracks) > 0 and len(selected_clusters) > 0
+
+if st.button("🚀 Tasto per Sottomissione Tracce Audio", type="primary", disabled=not process_enabled):
     with st.spinner("L'IA sta elaborando le tracce audio..."):
         
         clusters_instructions = ""
