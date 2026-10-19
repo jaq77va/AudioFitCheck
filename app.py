@@ -22,7 +22,7 @@ def home():
     return jsonify({
         "status": "online",
         "service": "SportDataSense CheckAI API Engine",
-        "version": "2.0.0"
+        "version": "2.1.0"
     })
 
 # --- ENDPOINT 1: Upload Multiplo e Elaborazione IA Automatica ---
@@ -59,20 +59,37 @@ def upload_audio():
             # Prepara il file audio per l'analisi multimodale di Gemini
             audio_parts.append(types.Part.from_bytes(data=file_bytes, mime_type="audio/wav"))
 
+        # Recupera solo i cluster selezionati dal coach (selected = true)
+        clusters = []
+        try:
+            c_res = supabase.table("coach_clusters") \
+                .select("cluster") \
+                .eq("coach_id", coach_id) \
+                .eq("selected", True) \
+                .execute()
+            if c_res.data:
+                clusters = [row["cluster"] for row in c_res.data]
+        except Exception as e:
+            print(f"Errore recupero cluster: {e}")
+
+        # Fallback se non ci sono cluster nel DB per questo coach
+        if not clusters:
+            clusters = ["Peso e Misure", "Aderenza Dieta", "Recupero e Sonno", "Criticità e Dolori"]
+
+        clusters_text = "\n".join([f"- {c}" for c in clusters])
+
         # Elaborazione automatica immediata con Gemini
         ai_analysis = "Analisi non disponibile."
         reply_draft = "Bozza di risposta non disponibile."
 
         if client_ai and audio_parts:
-            prompt = """
+            prompt = f"""
             Sei un assistente esperto in fisiologia e coaching per preparatori atletici e personal trainer.
-            Ascolta attentamente le registrazioni vocali inviate dal cliente e genera un report dettagliato e ordinato secondo i seguenti punti:
-            - Peso e Misure
-            - Aderenza Dieta
-            - Recupero e Sonno
-            - Criticità e Dolori
+            Ascolta attentamente le registrazioni vocali inviate dal cliente e genera un report dettagliato e ordinato secondo i seguenti punti richiesti dal coach:
+
+            {clusters_text}
             
-            Fornisci risposte chiare e concise. Includi infine una bozza di risposta motivazionale pronta da inviare via chat o email al cliente.
+            Fornisci risposte chiare e concise per ciascun punto. Includi infine una bozza di risposta motivazionale pronta da inviare via chat o email al cliente.
             """
 
             contents = [prompt] + audio_parts
@@ -87,6 +104,7 @@ def upload_audio():
         supabase.table("checkins").insert({
             "client_id": client_id,
             "coach_id": coach_id,
+            "audio_url": audio_urls[0] if audio_urls else None,
             "audio_urls": audio_urls,
             "ai_analysis": ai_analysis,
             "reply_draft": reply_draft,
@@ -101,17 +119,73 @@ def upload_audio():
 # --- ENDPOINT 2: Lista Check-in per il Coach (con IA già pronta) ---
 @app.route("/api/coach/checkins", methods=["GET"])
 def get_coach_checkins():
-    coach_id = request.args.get("coach_id")
-    if not coach_id:
+    coach_id_param = request.args.get("coach_id")
+    if not coach_id_param:
         return jsonify({"error": "Parametro coach_id mancante"}), 400
 
     try:
+        # Risolvi UUID reale del coach (supporta sia ID/code breve sia UUID)
+        coach_res = supabase.table("coaches") \
+            .select("id") \
+            .or_(f"code.eq.{coach_id_param},id.eq.{coach_id_param}") \
+            .execute()
+
+        if not coach_res.data:
+            return jsonify([]), 200
+
+        real_coach_uuid = coach_res.data[0]["id"]
+
         response = supabase.table("checkins") \
             .select("*, clients(name)") \
-            .eq("coach_id", coach_id) \
+            .eq("coach_id", real_coach_uuid) \
             .order("created_at", desc=True) \
             .execute()
+
         return jsonify(response.data), 200
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+
+# --- ENDPOINT 3: Lettura e Salvataggio Impostazioni Cluster Coach ---
+@app.route("/api/coach/settings", methods=["GET", "POST"])
+def manage_coach_settings():
+    coach_id_param = request.args.get("coach_id") if request.method == "GET" else request.json.get("coach_id")
+    if not coach_id_param:
+        return jsonify({"error": "Parametro coach_id mancante"}), 400
+
+    try:
+        # Risolvi UUID reale del coach
+        coach_res = supabase.table("coaches") \
+            .select("id") \
+            .or_(f"code.eq.{coach_id_param},id.eq.{coach_id_param}") \
+            .execute()
+
+        if not coach_res.data:
+            return jsonify({"error": "Coach non trovato"}), 404
+
+        real_coach_id = coach_res.data[0]["id"]
+
+        if request.method == "GET":
+            # Recupera tutti i cluster per il coach
+            res = supabase.table("coach_clusters") \
+                .select("cluster, selected") \
+                .eq("coach_id", real_coach_id) \
+                .execute()
+            
+            return jsonify({"coach_id": real_coach_id, "clusters": res.data if res.data else []}), 200
+
+        elif request.method == "POST":
+            # Payload atteso: {"coach_id": "1", "clusters": [{"cluster": "Peso e Misure", "selected": true}, ...]}
+            clusters_payload = request.json.get("clusters", [])
+
+            for item in clusters_payload:
+                supabase.table("coach_clusters").upsert({
+                    "coach_id": real_coach_id,
+                    "cluster": item["cluster"],
+                    "selected": item["selected"]
+                }, on_conflict="coach_id, cluster").execute()
+
+            return jsonify({"success": True, "message": "Impostazioni aggiornate con successo!"}), 200
+
     except Exception as e:
         return jsonify({"error": str(e)}), 500
 
