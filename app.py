@@ -148,7 +148,12 @@ def get_coach_checkins():
 # --- ENDPOINT 3: Lettura e Salvataggio Impostazioni Cluster Coach ---
 @app.route("/api/coach/settings", methods=["GET", "POST"])
 def manage_coach_settings():
-    coach_id_param = request.args.get("coach_id") if request.method == "GET" else request.json.get("coach_id")
+    if request.method == "GET":
+        coach_id_param = request.args.get("coach_id")
+    else:
+        req_data = request.get_json(silent=True) or {}
+        coach_id_param = req_data.get("coach_id")
+
     if not coach_id_param:
         return jsonify({"error": "Parametro coach_id mancante"}), 400
 
@@ -165,17 +170,19 @@ def manage_coach_settings():
         real_coach_id = coach_res.data[0]["id"]
 
         if request.method == "GET":
-            # Recupera tutti i cluster per il coach
             res = supabase.table("coach_clusters") \
                 .select("cluster, selected") \
                 .eq("coach_id", real_coach_id) \
                 .execute()
             
-            return jsonify({"coach_id": real_coach_id, "clusters": res.data if res.data else []}), 200
+            return jsonify({
+                "coach_id": real_coach_id, 
+                "clusters": res.data if res.data else []
+            }), 200
 
         elif request.method == "POST":
-            # Payload atteso: {"coach_id": "1", "clusters": [{"cluster": "Peso e Misure", "selected": true}, ...]}
-            clusters_payload = request.json.get("clusters", [])
+            req_data = request.get_json(silent=True) or {}
+            clusters_payload = req_data.get("clusters", [])
 
             for item in clusters_payload:
                 supabase.table("coach_clusters").upsert({
@@ -184,7 +191,10 @@ def manage_coach_settings():
                     "selected": item["selected"]
                 }, on_conflict="coach_id, cluster").execute()
 
-            return jsonify({"success": True, "message": "Impostazioni aggiornate con successo!"}), 200
+            return jsonify({
+                "success": True, 
+                "message": "Impostazioni aggiornate con successo!"
+            }), 200
 
     except Exception as e:
         return jsonify({"error": str(e)}), 500
